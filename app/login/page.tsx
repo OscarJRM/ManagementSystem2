@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from '@/lib/firebaseConfig';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,16 +15,16 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // En un escenario real, aquí se haría una llamada a una API para autenticar
-    if (email === 'admin@example.com' && password === 'password') {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       localStorage.setItem('isLoggedIn', 'true');
       router.push('/dashboard');
-    } else {
+    } catch (error) {
       toast({
         title: "Error de inicio de sesión",
-        content: "Usuario o contraseña incorrectos",
+        content: "Correo o contraseña incorrectos",
         variant: "destructive",
       });
     }
@@ -39,7 +41,7 @@ export default function LoginPage() {
             <div>
               <Input
                 type="email"
-                placeholder="Correo Electrónico"
+                placeholder="Correo electrónico"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
