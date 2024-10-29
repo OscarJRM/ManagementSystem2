@@ -1,14 +1,21 @@
-"use client"
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/components/ui/use-toast';
-import { Textarea } from '@/components/ui/textarea';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -23,39 +30,70 @@ export default function OrdersPage() {
   }
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orderId, setOrderId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [whatsappMessage, setWhatsappMessage] = useState('Your order {orderId} status has been updated.');
-  const [email, setEmail] = useState('');
+  const [orderId, setOrderId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [whatsappMessage, setWhatsappMessage] = useState(
+    "Your order {orderId} status has been updated."
+  );
+  const [email, setEmail] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [router]);
 
   const handleAddOrder = () => {
     if (orderId && customerName) {
       const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-      setOrders([...orders, { 
-        id: orderId, 
-        customerName, 
-        email,
-        phoneNumber: formattedPhoneNumber,
-        status: 'pending', 
-        createdAt: new Date().toISOString() 
-      }]);
-      setOrderId('');
-      setEmail('');
-      setCustomerName('');
-      setPhoneNumber('');
-      toast({
-        title: "Pedido Añadido",
-        content: `El pedido ${orderId} para ${customerName} ha sido añadido con éxito.`,
-      });
+
+      if (isEditing) {
+        setOrders(
+          orders.map((order) =>
+            order.id === orderId
+              ? {
+                  ...order,
+                  customerName,
+                  email,
+                  phoneNumber: formattedPhoneNumber,
+                }
+              : order
+          )
+        );
+        toast({
+          title: "Pedido Actualizado",
+          content: `El pedido ${orderId} ha sido actualizado con éxito.`,
+        });
+        setOrderId("");
+        setEmail("");
+        setCustomerName("");
+        setPhoneNumber("");
+        setIsEditing(false);
+      } else {
+        setOrders([
+          ...orders,
+          {
+            id: orderId,
+            customerName,
+            email,
+            phoneNumber: formattedPhoneNumber,
+            status: "pending",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setOrderId("");
+        setEmail("");
+        setCustomerName("");
+        setPhoneNumber("");
+        toast({
+          title: "Pedido Añadido",
+          content: `El pedido ${orderId} para ${customerName} ha sido añadido con éxito.`,
+        });
+      }
     } else {
       toast({
         title: "Error",
@@ -65,16 +103,42 @@ export default function OrdersPage() {
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setOrders(orders.map(order => 
-      order.id === id ? { ...order, status: newStatus, deliveredAt: newStatus === 'delivered' ? new Date().toISOString() : null } : order
-    ));
+  const handleEditOrder = (order: Order) => {
+    setOrderId(order.id);
+    setCustomerName(order.customerName);
+    setEmail(order.email);
+    setPhoneNumber(order.phoneNumber);
+    setIsEditing(true);
   };
 
-  const handleWhatsApp =  async(phoneNumber: string, orderId: string) => {
+  const handleDeleteOrder = (orderID: string) => {
+    setOrders(orders.filter((order) => order.id !== orderID));
+    toast({
+      title: "Pedido eliminado",
+      content: `El pedido ${orderID} ha sido eliminado con éxito.`,
+      variant: "destructive",
+    });
+  };
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setOrders(
+      orders.map((order) =>
+        order.id === id
+          ? {
+              ...order,
+              status: newStatus,
+              deliveredAt:
+                newStatus === "delivered" ? new Date().toISOString() : null,
+            }
+          : order
+      )
+    );
+  };
+
+  const handleWhatsApp = async (phoneNumber: string, orderId: string) => {
     if (phoneNumber) {
-      const message = whatsappMessage.replace('{orderId}', orderId);
-      try{
+      const message = whatsappMessage.replace("{orderId}", orderId);
+      try {
         await navigator.clipboard.writeText(message);
         toast({
           title: "Mensaje copiado al portapapeles",
@@ -88,7 +152,10 @@ export default function OrdersPage() {
           variant: "destructive",
         });
       }
-      window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+      window.open(
+        `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`,
+        "_blank"
+      );
     } else {
       toast({
         title: "Error",
@@ -99,14 +166,14 @@ export default function OrdersPage() {
   };
 
   const formatPhoneNumber = (number: string) => {
-    const cleanNumber = number.replace(/\D/g, '');
-    if (cleanNumber.startsWith('593')) {
-      return '+' + cleanNumber;
+    const cleanNumber = number.replace(/\D/g, "");
+    if (cleanNumber.startsWith("593")) {
+      return "+" + cleanNumber;
     }
-    if (cleanNumber.startsWith('0')) {
-      return '+593' + cleanNumber.slice(1);
+    if (cleanNumber.startsWith("0")) {
+      return "+593" + cleanNumber.slice(1);
     }
-    return '+593' + cleanNumber;
+    return "+593" + cleanNumber;
   };
 
   return (
@@ -126,11 +193,11 @@ export default function OrdersPage() {
           onChange={(e) => setCustomerName(e.target.value)}
         />
         <Input
-          type='email'
-          placeholder='Email'
+          type="email"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className='rounded-l-none'
+          className="rounded-l-none"
         />
         <div className="flex">
           <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md dark:bg-gray-600 dark:text-gray-400 dark:border-gray-600">
@@ -145,9 +212,14 @@ export default function OrdersPage() {
           />
         </div>
       </div>
-      <Button onClick={handleAddOrder} className="mb-4">Añadir Pedido</Button>
+      <Button onClick={handleAddOrder} className="mb-4">
+        {isEditing? "Editar Pedido": "Añadir Pedido" }
+      </Button>
       <div className="mb-4">
-        <label htmlFor="whatsappMessage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label
+          htmlFor="whatsappMessage"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
           Personalizar Mensaje de WhatsApp
         </label>
         <Textarea
@@ -179,18 +251,48 @@ export default function OrdersPage() {
               <TableCell>{order.email}</TableCell>
               <TableCell>{order.phoneNumber}</TableCell>
               <TableCell>{order.status}</TableCell>
-              <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
-              <TableCell>{order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '-'}</TableCell>
+              <TableCell>
+                {new Date(order.createdAt).toLocaleString()}
+              </TableCell>
+              <TableCell>
+                {order.deliveredAt
+                  ? new Date(order.deliveredAt).toLocaleString()
+                  : "-"}
+              </TableCell>
               <TableCell>
                 <Button
                   variant="outline"
                   className="mr-2"
-                  onClick={() => handleStatusChange(order.id, order.status === 'pending' ? 'delivered' : 'pending')}
+                  onClick={() =>
+                    handleStatusChange(
+                      order.id,
+                      order.status === "pending" ? "delivered" : "pending"
+                    )
+                  }
                 >
-                  {order.status === 'pending' ? 'Marcar Entregado' : 'Marcar Pendiente'}
+                  {order.status === "pending"
+                    ? "Marcar Entregado"
+                    : "Marcar Pendiente"}
                 </Button>
-                <Button variant="outline" onClick={() => handleWhatsApp(order.phoneNumber, order.id)}>
+                <Button
+                  variant="outline"
+                  className="mr-2"
+                  onClick={() => handleEditOrder(order)}
+                >
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  className="mr-2"
+                  onClick={() => handleWhatsApp(order.phoneNumber, order.id)}
+                >
                   WhatsApp
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDeleteOrder(order.id)}
+                >
+                  Eliminar
                 </Button>
               </TableCell>
             </TableRow>
