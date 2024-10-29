@@ -71,9 +71,23 @@ export default function OrdersPage() {
     ));
   };
 
-  const handleWhatsApp = (phoneNumber: string, orderId: string) => {
+  const handleWhatsApp =  async(phoneNumber: string, orderId: string) => {
     if (phoneNumber) {
       const message = whatsappMessage.replace('{orderId}', orderId);
+      try{
+        await navigator.clipboard.writeText(message);
+        toast({
+          title: "Mensaje copiado al portapapeles",
+          content: "El mensaje ha sido copiado al portapapeles.",
+          variant: "default",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          content: "No se pudo copiar el mensaje al portapapeles.",
+          variant: "destructive",
+        });
+      }
       window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     } else {
       toast({

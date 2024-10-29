@@ -43,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className={`w-full justify-start ${
                   theme === 'dark' 
                     ? 'text-gray-300 hover:text-white' 
-                    : 'text-gray-700 hover:text-black'
+                    : 'text-gray-700 hover:text-white'
                 }`}
               >
                 <item.icon className="mr-2 h-4 w-4" />
@@ -55,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             variant="ghost"
             className={`w-full justify-start ${
               theme === 'dark' 
-                ? 'text-gray-300 hover:text-white' 
+                ? 'text-gray-700 hover:text-black' 
                 : 'text-gray-700 hover:text-black'
             }`}
             onClick={handleLogout}

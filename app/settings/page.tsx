@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const handleSave = () => {
     toast({
       title: "Configuración Guardada",
-      description: `Beneficio predeterminado por pedido establecido en $${defaultProfit}`,
+      content: `Beneficio predeterminado por pedido establecido en $${defaultProfit}`,
     });
   };
 
