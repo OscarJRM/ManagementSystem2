@@ -12,11 +12,22 @@ import { Textarea } from '@/components/ui/textarea';
 
 export default function OrdersPage() {
   const router = useRouter();
-  const [orders, setOrders] = useState([]);
+  interface Order {
+    id: string;
+    customerName: string;
+    email: string;
+    phoneNumber: string;
+    status: string;
+    createdAt: string;
+    deliveredAt?: string | null;
+  }
+
+  const [orders, setOrders] = useState<Order[]>([]);
   const [orderId, setOrderId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [whatsappMessage, setWhatsappMessage] = useState('Your order {orderId} status has been updated.');
+  const [email, setEmail] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,46 +43,48 @@ export default function OrdersPage() {
       setOrders([...orders, { 
         id: orderId, 
         customerName, 
+        email,
         phoneNumber: formattedPhoneNumber,
         status: 'pending', 
         createdAt: new Date().toISOString() 
       }]);
       setOrderId('');
+      setEmail('');
       setCustomerName('');
       setPhoneNumber('');
       toast({
         title: "Pedido Añadido",
-        description: `El pedido ${orderId} para ${customerName} ha sido añadido con éxito.`,
+        content: `El pedido ${orderId} para ${customerName} ha sido añadido con éxito.`,
       });
     } else {
       toast({
         title: "Error",
-        description: "El ID del pedido y el nombre del cliente son obligatorios.",
+        content: "El ID del pedido y el nombre del cliente son obligatorios.",
         variant: "destructive",
       });
     }
   };
 
-  const handleStatusChange = (id, newStatus) => {
+  const handleStatusChange = (id: string, newStatus: string) => {
     setOrders(orders.map(order => 
       order.id === id ? { ...order, status: newStatus, deliveredAt: newStatus === 'delivered' ? new Date().toISOString() : null } : order
     ));
   };
 
-  const handleWhatsApp = (phoneNumber, orderId) => {
+  const handleWhatsApp = (phoneNumber: string, orderId: string) => {
     if (phoneNumber) {
       const message = whatsappMessage.replace('{orderId}', orderId);
       window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     } else {
       toast({
         title: "Error",
-        description: "No hay número de teléfono disponible para este pedido.",
+        content: "No hay número de teléfono disponible para este pedido.",
         variant: "destructive",
       });
     }
   };
 
-  const formatPhoneNumber = (number) => {
+  const formatPhoneNumber = (number: string) => {
     const cleanNumber = number.replace(/\D/g, '');
     if (cleanNumber.startsWith('593')) {
       return '+' + cleanNumber;
@@ -97,6 +110,13 @@ export default function OrdersPage() {
           placeholder="Nombre del Cliente"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
+        />
+        <Input
+          type='email'
+          placeholder='Email'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className='rounded-l-none'
         />
         <div className="flex">
           <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md dark:bg-gray-600 dark:text-gray-400 dark:border-gray-600">
@@ -129,6 +149,7 @@ export default function OrdersPage() {
           <TableRow>
             <TableHead>ID del Pedido</TableHead>
             <TableHead>Nombre del Cliente</TableHead>
+            <TableHead>Correo</TableHead>
             <TableHead>Número de Teléfono</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Creado En</TableHead>
@@ -141,6 +162,7 @@ export default function OrdersPage() {
             <TableRow key={order.id}>
               <TableCell>{order.id}</TableCell>
               <TableCell>{order.customerName}</TableCell>
+              <TableCell>{order.email}</TableCell>
               <TableCell>{order.phoneNumber}</TableCell>
               <TableCell>{order.status}</TableCell>
               <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>

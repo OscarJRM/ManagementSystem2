@@ -22,7 +22,7 @@ export default function LoginPage() {
     } else {
       toast({
         title: "Error de inicio de sesión",
-        description: "Usuario o contraseña incorrectos",
+        content: "Usuario o contraseña incorrectos",
         variant: "destructive",
       });
     }
