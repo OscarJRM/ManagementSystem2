@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +16,26 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
+// Obtener los pedidos del servidor y guardarlos en localStorage
+async function fetchOrders() {
+  const response = await fetch("http://localhost:3002/orders");
+  const data = await response.json();
+  localStorage.setItem("orders", JSON.stringify(data));
+  return data;
+}
+
+// Obtener los reportes del servidor y guardarlos en localStorage
+async function fetchReports() {
+  const response = await fetch("http://localhost:3002/reports");
+  const data = await response.json();
+  localStorage.setItem("reports", JSON.stringify(data));
+  return data;
+}
+
 export default function OrdersPage() {
   const router = useRouter();
+  const { toast } = useToast();
+
   interface Order {
     id: string;
     customerName: string;
@@ -34,66 +51,44 @@ export default function OrdersPage() {
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState(
-    "Your order {orderId} status has been updated."
+    "El estado de su pedido {orderId} ha sido actualizado."
   );
   const [email, setEmail] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
       router.push("/login");
+    } else {
+      fetchOrders().then((data) => setOrders(data));
+      fetchReports();
     }
   }, [router]);
 
-  const handleAddOrder = () => {
+  
+  const handleAddOrder = async () => {
     if (orderId && customerName) {
-      const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+      const newOrder = {
+        id: orderId,
+        customerName,
+        email,
+        phoneNumber: formatPhoneNumber(phoneNumber),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
 
-      if (isEditing) {
-        setOrders(
-          orders.map((order) =>
-            order.id === orderId
-              ? {
-                  ...order,
-                  customerName,
-                  email,
-                  phoneNumber: formattedPhoneNumber,
-                }
-              : order
-          )
-        );
-        toast({
-          title: "Pedido Actualizado",
-          content: `El pedido ${orderId} ha sido actualizado con éxito.`,
-        });
-        setOrderId("");
-        setEmail("");
-        setCustomerName("");
-        setPhoneNumber("");
-        setIsEditing(false);
-      } else {
-        setOrders([
-          ...orders,
-          {
-            id: orderId,
-            customerName,
-            email,
-            phoneNumber: formattedPhoneNumber,
-            status: "pending",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-        setOrderId("");
-        setEmail("");
-        setCustomerName("");
-        setPhoneNumber("");
-        toast({
-          title: "Pedido Añadido",
-          content: `El pedido ${orderId} para ${customerName} ha sido añadido con éxito.`,
-        });
-      }
+      const response = await fetch("http://localhost:3002/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newOrder),
+      });
+      const createdOrder = await response.json();
+      setOrders([...orders, createdOrder]);
+      fetchReports(); // Actualiza los reportes en localStorage
+      resetForm();
     } else {
       toast({
         title: "Error",
@@ -103,36 +98,84 @@ export default function OrdersPage() {
     }
   };
 
-  const handleEditOrder = (order: Order) => {
-    setOrderId(order.id);
-    setCustomerName(order.customerName);
-    setEmail(order.email);
-    setPhoneNumber(order.phoneNumber);
-    setIsEditing(true);
-  };
+  const handleUpdateOrder = async () => {
+    const updatedOrder = {
+      customerName,
+      email,
+      phoneNumber: formatPhoneNumber(phoneNumber),
+      status: "pending",
+    };
 
-  const handleDeleteOrder = (orderID: string) => {
-    setOrders(orders.filter((order) => order.id !== orderID));
-    toast({
-      title: "Pedido eliminado",
-      content: `El pedido ${orderID} ha sido eliminado con éxito.`,
-      variant: "destructive",
+    const response = await fetch(`http://localhost:3002/orders/${orderId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatedOrder),
     });
+    if (response.ok) {
+      const updatedData = await response.json();
+      setOrders(
+        orders.map((order) => (order.id === orderId ? updatedData : order))
+      );
+      toast({
+        title: "Pedido Actualizado",
+        content: `El pedido ${orderId} ha sido actualizado con éxito.`,
+      });
+      resetForm();
+    } else {
+      toast({
+        title: "Error",
+        content: "No se pudo actualizar el pedido.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setOrders(
-      orders.map((order) =>
-        order.id === id
-          ? {
-              ...order,
-              status: newStatus,
-              deliveredAt:
-                newStatus === "delivered" ? new Date().toISOString() : null,
-            }
-          : order
-      )
-    );
+  const handleDeleteOrder = async (id: string) => {
+    const response = await fetch(`http://localhost:3002/orders/${id}`, {
+      method: "DELETE",
+    });
+    if (response.ok) {
+      setOrders(orders.filter((order) => order.id !== id));
+      fetchReports();
+      toast({
+        title: "Pedido eliminado",
+        content: `El pedido ${id} ha sido eliminado con éxito.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Error",
+        content: "No se pudo eliminar el pedido.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    const response = await fetch(`http://localhost:3002/orders/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: newStatus, deliveredAt: newStatus === "delivered" ? new Date().toISOString() : null }),
+    });
+    if (response.ok) {
+      const updatedOrder = await response.json();
+      setOrders(orders.map((order) => (order.id === id ? updatedOrder : order)));
+      fetchReports();
+      toast({
+        title: "Estado Actualizado",
+        content: `El estado del pedido ${id} ha sido cambiado a ${newStatus}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        content: "No se pudo cambiar el estado del pedido.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleWhatsApp = async (phoneNumber: string, orderId: string) => {
@@ -145,6 +188,10 @@ export default function OrdersPage() {
           content: "El mensaje ha sido copiado al portapapeles.",
           variant: "default",
         });
+        window.open(
+          `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`,
+          "_blank"
+        );
       } catch (error) {
         toast({
           title: "Error",
@@ -152,10 +199,6 @@ export default function OrdersPage() {
           variant: "destructive",
         });
       }
-      window.open(
-        `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`,
-        "_blank"
-      );
     } else {
       toast({
         title: "Error",
@@ -163,6 +206,22 @@ export default function OrdersPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const resetForm = () => {
+    setOrderId("");
+    setCustomerName("");
+    setPhoneNumber("");
+    setEmail("");
+    setIsEditing(false);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setOrderId(order.id);
+    setCustomerName(order.customerName);
+    setEmail(order.email);
+    setPhoneNumber(order.phoneNumber);
+    setIsEditing(true);
   };
 
   const formatPhoneNumber = (number: string) => {
@@ -175,6 +234,17 @@ export default function OrdersPage() {
     }
     return "+593" + cleanNumber;
   };
+
+  const newOrder = {
+    id: orderId,
+    customerName,
+    email,
+    phoneNumber: formatPhoneNumber(phoneNumber),
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    whatsappMessage, // Agregar el campo de mensaje personalizado
+  };
+  
 
   return (
     <Layout>
@@ -212,24 +282,25 @@ export default function OrdersPage() {
           />
         </div>
       </div>
-      <Button onClick={handleAddOrder} className="mb-4">
-        {isEditing? "Editar Pedido": "Añadir Pedido" }
+      <Button onClick={isEditing ? handleUpdateOrder : handleAddOrder} className="mb-4">
+        {isEditing ? "Editar Pedido" : "Añadir Pedido"}
       </Button>
       <div className="mb-4">
-        <label
-          htmlFor="whatsappMessage"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-        >
-          Personalizar Mensaje de WhatsApp
-        </label>
-        <Textarea
-          id="whatsappMessage"
-          placeholder="Ingrese mensaje personalizado. Use {orderId} para el ID del pedido."
-          value={whatsappMessage}
-          onChange={(e) => setWhatsappMessage(e.target.value)}
-          className="w-full"
-        />
-      </div>
+  <label
+    htmlFor="whatsappMessage"
+    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+  >
+    Personalizar Mensaje de WhatsApp
+  </label>
+  <Textarea
+    id="whatsappMessage"
+    placeholder="Ingrese mensaje personalizado. Use {orderId} para el ID del pedido."
+    value={whatsappMessage}
+    onChange={(e) => setWhatsappMessage(e.target.value)}
+    className="w-full"
+  />
+</div>
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -251,9 +322,7 @@ export default function OrdersPage() {
               <TableCell>{order.email}</TableCell>
               <TableCell>{order.phoneNumber}</TableCell>
               <TableCell>{order.status}</TableCell>
-              <TableCell>
-                {new Date(order.createdAt).toLocaleString()}
-              </TableCell>
+              <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
               <TableCell>
                 {order.deliveredAt
                   ? new Date(order.deliveredAt).toLocaleString()

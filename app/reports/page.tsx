@@ -1,30 +1,54 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-const mockData = [
-  { date: '2023-01-01', orders: 5, revenue: 500 },
-  { date: '2023-01-02', orders: 7, revenue: 700 },
-  { date: '2023-01-03', orders: 3, revenue: 300 },
-  { date: '2023-01-04', orders: 8, revenue: 800 },
-  { date: '2023-01-05', orders: 6, revenue: 600 },
-];
+interface Report {
+  date: string;
+  orders: number;
+  revenue: number;
+}
 
 export default function ReportsPage() {
-  const [reportType, setReportType] = useState('deliveries');
+  const [reportType, setReportType] = useState("deliveries");
+  const [reports, setReports] = useState<Report[]>([]);
   const router = useRouter();
 
+  // Cargar datos de reports desde el backend Express
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
     if (!isLoggedIn) {
-      router.push('/login');
+      router.push("/login");
+    } else {
+      fetchReports();
     }
   }, [router]);
+
+  // Función para obtener reportes del backend
+  const fetchReports = async () => {
+    try {
+      const response = await fetch("http://localhost:3002/reports");
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data);
+      } else {
+        console.error("Error al obtener los reportes del servidor.");
+      }
+    } catch (error) {
+      console.error("Error en la solicitud de reportes:", error);
+    }
+  };
+
+  const totalValue =
+    reportType === "deliveries"
+      ? reports.reduce((sum, report) => sum + report.orders, 0)
+      : reports.reduce((sum, report) => sum + report.revenue, 0);
+
+  const averageValue = (totalValue / reports.length).toFixed(2);
 
   return (
     <Layout>
@@ -43,13 +67,11 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Card>
           <CardHeader>
-            <CardTitle>{reportType === 'deliveries' ? 'Total de Entregas' : 'Ingresos Totales'}</CardTitle>
+            <CardTitle>{reportType === "deliveries" ? "Total de Entregas" : "Ingresos Totales"}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {reportType === 'deliveries'
-                ? mockData.reduce((sum, day) => sum + day.orders, 0)
-                : `$${mockData.reduce((sum, day) => sum + day.revenue, 0)}`}
+              {reportType === "deliveries" ? totalValue : `$${totalValue}`}
             </p>
           </CardContent>
         </Card>
@@ -59,26 +81,24 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {reportType === 'deliveries'
-                ? (mockData.reduce((sum, day) => sum + day.orders, 0) / mockData.length).toFixed(2)
-                : `$${(mockData.reduce((sum, day) => sum + day.revenue, 0) / mockData.length).toFixed(2)}`}
+              {reportType === "deliveries" ? averageValue : `$${averageValue}`}
             </p>
           </CardContent>
         </Card>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>{reportType === 'deliveries' ? 'Entregas por Fecha' : 'Ingresos por Fecha'}</CardTitle>
+          <CardTitle>{reportType === "deliveries" ? "Entregas por Fecha" : "Ingresos por Fecha"}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockData}>
+            <BarChart data={reports}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey={reportType === 'deliveries' ? 'orders' : 'revenue'} fill="#8884d8" />
+              <Bar dataKey={reportType === "deliveries" ? "orders" : "revenue"} fill="#8884d8" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

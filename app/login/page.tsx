@@ -5,28 +5,25 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from '@/lib/firebaseConfig';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null); // Restablece el mensaje de error antes de intentar iniciar sesión
     try {
       await signInWithEmailAndPassword(auth, email, password);
       localStorage.setItem('isLoggedIn', 'true');
       router.push('/dashboard');
     } catch (error) {
-      toast({
-        title: "Error de inicio de sesión",
-        content: "Correo o contraseña incorrectos",
-        variant: "destructive",
-      });
+      console.log(error);
+      setError("Correo o contraseña incorrectos"); // Establece el mensaje de error en caso de fallo
     }
   };
 
@@ -60,6 +57,11 @@ export default function LoginPage() {
               Iniciar Sesión
             </Button>
           </form>
+          {error && (
+            <p className="mt-4 text-center text-red-600">
+              {error}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
